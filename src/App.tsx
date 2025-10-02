@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
+import Settings from "./pages/Settings";
 import UploadParse from "./pages/UploadParse";
 import Requirements from "./pages/Requirements";
 import Timeline from "./pages/Timeline";
@@ -35,7 +36,7 @@ const App = () => (
             <Route path="compliance" element={<Compliance />} />
             <Route path="submission" element={<Submission />} />
             <Route path="knowledge" element={<Knowledge />} />
-            <Route path="settings" element={<Dashboard />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

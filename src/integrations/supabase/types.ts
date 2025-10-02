@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          created_at: string
+          export_naming_convention: string | null
+          footer_text: string | null
+          id: string
+          language: string | null
+          llm_model: string | null
+          logo_url: string | null
+          min_confidence: number | null
+          organization_name: string | null
+          require_citations: boolean | null
+          require_login: boolean | null
+          timezone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          export_naming_convention?: string | null
+          footer_text?: string | null
+          id?: string
+          language?: string | null
+          llm_model?: string | null
+          logo_url?: string | null
+          min_confidence?: number | null
+          organization_name?: string | null
+          require_citations?: boolean | null
+          require_login?: boolean | null
+          timezone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          export_naming_convention?: string | null
+          footer_text?: string | null
+          id?: string
+          language?: string | null
+          llm_model?: string | null
+          logo_url?: string | null
+          min_confidence?: number | null
+          organization_name?: string | null
+          require_citations?: boolean | null
+          require_login?: boolean | null
+          timezone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       attachments: {
         Row: {
           created_at: string | null
@@ -143,6 +194,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      domain_packs: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       draft_sections: {
         Row: {
@@ -520,6 +595,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -528,6 +624,10 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
       }
       halfvec_avg: {
         Args: { "": number[] }
@@ -544,6 +644,13 @@ export type Database = {
       halfvec_typmod_in: {
         Args: { "": unknown[] }
         Returns: number
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       hnsw_bit_support: {
         Args: { "": unknown }
@@ -633,7 +740,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "editor" | "reviewer" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -760,6 +867,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "editor", "reviewer", "viewer"],
+    },
   },
 } as const
