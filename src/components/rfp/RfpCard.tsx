@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Building2, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Building2, FileText, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RfpCardProps {
@@ -11,6 +12,7 @@ interface RfpCardProps {
   status: "draft" | "in-progress" | "review" | "compliant" | "submitted";
   requirementsCount: number;
   complianceScore?: number;
+  onDelete?: () => void;
 }
 
 const statusConfig = {
@@ -29,12 +31,27 @@ export default function RfpCard({
   status,
   requirementsCount,
   complianceScore,
+  onDelete,
 }: RfpCardProps) {
   const statusInfo = statusConfig[status];
 
   return (
-    <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer group border-border">
-      <CardHeader className="space-y-3">
+    <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer group border-border relative">
+      {onDelete && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
+      
+      <CardHeader className="space-y-3 pr-12">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-2">
             {title}

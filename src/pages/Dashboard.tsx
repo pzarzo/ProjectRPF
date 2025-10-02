@@ -5,6 +5,16 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Rfp {
   id: string;
@@ -19,6 +29,8 @@ export default function Dashboard() {
   const [rfps, setRfps] = useState<Rfp[]>([]);
   const [requirements, setRequirements] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [rfpToDelete, setRfpToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadRfps();
@@ -272,6 +284,40 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteRfp = async () => {
+    if (!rfpToDelete) return;
+
+    try {
+      const { error } = await (supabase as any)
+        .from('rfps')
+        .delete()
+        .eq('id', rfpToDelete);
+
+      if (error) throw error;
+
+      // Update local state
+      setRfps(rfps.filter(rfp => rfp.id !== rfpToDelete));
+      
+      // Update requirements count
+      const newRequirements = { ...requirements };
+      delete newRequirements[rfpToDelete];
+      setRequirements(newRequirements);
+
+      toast.success("RFP eliminado correctamente");
+    } catch (error) {
+      console.error('Error deleting RFP:', error);
+      toast.error("Error al borrar RFP. Intenta de nuevo.");
+    } finally {
+      setDeleteDialogOpen(false);
+      setRfpToDelete(null);
+    }
+  };
+
+  const openDeleteDialog = (rfpId: string) => {
+    setRfpToDelete(rfpId);
+    setDeleteDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
@@ -362,11 +408,34 @@ export default function Dashboard() {
                   deadline={new Date(rfp.created_at).toLocaleDateString()}
                   status="draft"
                   requirementsCount={requirements[rfp.id] || 0}
+                  onDelete={() => openDeleteDialog(rfp.id)}
                 />
               ))}
             </div>
           )}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar este RFP?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Se borrarán también sus borradores, requisitos y compliance asociados. 
+                Esta acción no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteRfp}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
