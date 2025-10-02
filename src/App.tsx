@@ -11,6 +11,7 @@ import Timeline from "./pages/Timeline";
 import Draft from "./pages/Draft";
 import Compliance from "./pages/Compliance";
 import Submission from "./pages/Submission";
+import Knowledge from "./pages/Knowledge";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -33,7 +34,7 @@ const App = () => (
             <Route path="draft" element={<Draft />} />
             <Route path="compliance" element={<Compliance />} />
             <Route path="submission" element={<Submission />} />
-            <Route path="knowledge" element={<Dashboard />} />
+            <Route path="knowledge" element={<Knowledge />} />
             <Route path="settings" element={<Dashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />

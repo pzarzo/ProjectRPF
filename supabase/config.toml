@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.export-submission]
 verify_jwt = true
+
+[functions.search-knowledge]
+verify_jwt = true
