@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import UploadParse from "./pages/UploadParse";
 import Requirements from "./pages/Requirements";
 import Timeline from "./pages/Timeline";
+import Draft from "./pages/Draft";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -27,7 +28,7 @@ const App = () => (
             <Route path="upload" element={<UploadParse />} />
             <Route path="requirements" element={<Requirements />} />
             <Route path="timeline" element={<Timeline />} />
-            <Route path="draft" element={<Dashboard />} />
+            <Route path="draft" element={<Draft />} />
             <Route path="compliance" element={<Dashboard />} />
             <Route path="submission" element={<Dashboard />} />
             <Route path="knowledge" element={<Dashboard />} />
