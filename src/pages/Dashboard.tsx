@@ -26,7 +26,7 @@ export default function Dashboard() {
 
   const loadRfps = async () => {
     try {
-      const { data: rfpsData, error: rfpsError } = await supabase
+      const { data: rfpsData, error: rfpsError } = await (supabase as any)
         .from('rfps')
         .select('id, title, issuer, reference_id, created_at')
         .order('created_at', { ascending: false });
@@ -40,7 +40,7 @@ export default function Dashboard() {
         const reqCounts: Record<string, number> = {};
         
         for (const rfp of rfpsData) {
-          const { count, error } = await supabase
+          const { count, error } = await (supabase as any)
             .from('rfp_requirements')
             .select('*', { count: 'exact', head: true })
             .eq('rfp_id', rfp.id);

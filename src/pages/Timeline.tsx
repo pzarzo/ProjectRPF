@@ -34,7 +34,7 @@ export default function Timeline() {
   const loadDeadlines = async () => {
     try {
       // Load all deadlines
-      const { data: deadlinesData, error: deadlinesError } = await supabase
+      const { data: deadlinesData, error: deadlinesError } = await (supabase as any)
         .from('rfp_deadlines')
         .select('*')
         .order('datetime_iso', { ascending: true });
@@ -45,8 +45,8 @@ export default function Timeline() {
 
       // Load corresponding RFPs
       if (deadlinesData && deadlinesData.length > 0) {
-        const rfpIds = [...new Set(deadlinesData.map(d => d.rfp_id))];
-        const { data: rfpsData, error: rfpsError } = await supabase
+        const rfpIds = [...new Set(deadlinesData.map((d: any) => d.rfp_id))];
+        const { data: rfpsData, error: rfpsError } = await (supabase as any)
           .from('rfps')
           .select('id, title, reference_id')
           .in('id', rfpIds);
@@ -54,7 +54,7 @@ export default function Timeline() {
         if (rfpsError) throw rfpsError;
 
         const rfpsMap: Record<string, Rfp> = {};
-        rfpsData?.forEach(rfp => {
+        rfpsData?.forEach((rfp: any) => {
           rfpsMap[rfp.id] = rfp;
         });
         setRfps(rfpsMap);
