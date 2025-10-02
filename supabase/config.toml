@@ -2,3 +2,6 @@ project_id = "fnoorcyskheaonrjfuam"
 
 [functions.extract-rfp]
 verify_jwt = true
+
+[functions.health]
+verify_jwt = false

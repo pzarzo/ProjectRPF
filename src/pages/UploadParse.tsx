@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import UploadZone from "@/components/upload/UploadZone";
+import LogsDrawer from "@/components/upload/LogsDrawer";
 import { Loader2, ArrowRight, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,11 +31,21 @@ interface ExtractedRfp {
   }>;
 }
 
+interface LogEntry {
+  timestamp: string;
+  status: 'success' | 'error' | 'pending';
+  url: string;
+  statusCode?: number;
+  durationMs?: number;
+  errorMessage?: string;
+}
+
 export default function UploadParse() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedRfp | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const handleFileSelect = (selectedFile: File) => {
     setFile(selectedFile);
@@ -46,23 +57,29 @@ export default function UploadParse() {
     if (!file) return;
 
     setIsProcessing(true);
+    const startTime = Date.now();
+    const logEntry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      status: 'pending',
+      url: 'extract-rfp',
+    };
+    setLogs(prev => [logEntry, ...prev]);
     
     try {
-      console.log('Starting RFP extraction...');
+      console.log('Starting extraction...');
       
       const formData = new FormData();
       formData.append('file', file);
 
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session) {
-        throw new Error("Please log in to upload RFPs");
+        throw new Error("Please log in");
       }
 
-      console.log('Calling extract-rfp function...');
+      console.log('Calling function with 60s timeout...');
       
-      // Set a timeout for the function call
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout - please try a smaller file')), 60000)
+        setTimeout(() => reject(new Error('Timeout after 60 seconds')), 60000)
       );
 
       const functionPromise = supabase.functions.invoke('extract-rfp', {
@@ -71,32 +88,43 @@ export default function UploadParse() {
 
       const { data, error } = await Promise.race([functionPromise, timeoutPromise]) as any;
 
+      const duration = Date.now() - startTime;
+
       if (error) {
-        console.error('Function error:', error);
         throw error;
       }
 
       if (data?.error) {
-        console.error('Server error:', data.error);
         throw new Error(data.error);
       }
 
-      console.log('Extraction successful:', data);
+      console.log('Success:', data);
       setExtractedData(data.extracted);
-      toast.success("RFP parsed successfully! Data saved to database.");
-    } catch (error) {
-      console.error('Error parsing RFP:', error);
-      let errorMessage = "Parsing failed, please try again";
       
+      setLogs(prev => prev.map((log, i) => 
+        i === 0 ? { ...log, status: 'success', statusCode: 200, durationMs: duration } : log
+      ));
+      
+      toast.success(`Extracted in ${(duration/1000).toFixed(1)}s using ${data.meta?.method || 'regex'}`);
+      
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error('Error:', error);
+      
+      let errorMessage = "Extraction failed";
       if (error instanceof Error) {
-        if (error.message.includes('timeout')) {
-          errorMessage = "Request timeout - the file may be too large. Try a smaller file or a different format.";
+        if (error.message.includes('Timeout')) {
+          errorMessage = "Timeout - file too large or complex";
         } else if (error.message.includes('not authenticated')) {
-          errorMessage = "Please log in again to upload RFPs";
+          errorMessage = "Please log in";
         } else {
           errorMessage = error.message;
         }
       }
+      
+      setLogs(prev => prev.map((log, i) => 
+        i === 0 ? { ...log, status: 'error', durationMs: duration, errorMessage } : log
+      ));
       
       toast.error(errorMessage);
       setExtractedData(null);
@@ -125,6 +153,11 @@ export default function UploadParse() {
 
         {/* Upload Section */}
         <Card className="p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Upload Document</h2>
+            <LogsDrawer logs={logs} />
+          </div>
+          
           <UploadZone onFileSelect={handleFileSelect} />
 
           {file && !extractedData && (

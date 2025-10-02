@@ -24,6 +24,53 @@ export default function Dashboard() {
     loadRfps();
   }, []);
 
+  const loadExampleData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please log in first");
+        return;
+      }
+
+      // Insert example RFP
+      const { data: rfpData, error: rfpError } = await (supabase as any)
+        .from('rfps')
+        .insert({
+          user_id: user.id,
+          title: 'UNOPS FO/2025/1 - National IP Georgia',
+          issuer: 'UNOPS',
+          reference_id: 'FO/2025/1',
+          budget_cap_amount: 170000,
+          budget_cap_currency: 'USD',
+          duration_months: 12,
+          language: 'en',
+          confidence: 0.9,
+        })
+        .select()
+        .single();
+
+      if (rfpError) throw rfpError;
+
+      // Insert example deadlines
+      const deadlines = [
+        { type: 'clarifications', datetime_iso: '2025-10-05T12:00:00', timezone: 'UTC+4' },
+        { type: 'info_session', datetime_iso: '2025-10-08T14:00:00', timezone: 'UTC+4' },
+        { type: 'submission', datetime_iso: '2025-10-12T17:00:00', timezone: 'UTC+4' },
+        { type: 'contract_start', datetime_iso: '2025-11-01T00:00:00', timezone: 'UTC+4' },
+      ];
+
+      await (supabase as any).from('rfp_deadlines').insert(
+        deadlines.map(d => ({ rfp_id: rfpData.id, ...d }))
+      );
+
+      toast.success("Example RFP loaded!");
+      loadRfps();
+    } catch (error) {
+      console.error('Error loading example:', error);
+      toast.error("Failed to load example");
+    }
+  };
+
   const loadRfps = async () => {
     try {
       const { data: rfpsData, error: rfpsError } = await (supabase as any)
@@ -73,14 +120,23 @@ export default function Dashboard() {
               Manage and track your RFP responses
             </p>
           </div>
-          <Button
-            onClick={() => navigate("/upload")}
-            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-            size="lg"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            New RFP
-          </Button>
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={loadExampleData}
+              disabled={isLoading}
+            >
+              Load Example RFP
+            </Button>
+            <Button
+              onClick={() => navigate("/upload")}
+              className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+              size="lg"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              New RFP
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
