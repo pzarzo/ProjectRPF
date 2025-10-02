@@ -51,20 +51,39 @@ export default function UploadParse() {
       const formData = new FormData();
       formData.append('file', file);
 
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session) {
+        throw new Error("Please log in to upload RFPs");
+      }
+
       const { data, error } = await supabase.functions.invoke('extract-rfp', {
         body: formData,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Function error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       setExtractedData(data.extracted);
-      toast.success("RFP parsed successfully");
+      toast.success("RFP parsed successfully! Data saved to database.");
     } catch (error) {
       console.error('Error parsing RFP:', error);
-      toast.error(error instanceof Error ? error.message : "Failed to parse RFP");
+      const errorMessage = error instanceof Error ? error.message : "Parsing failed, please try again";
+      toast.error(errorMessage);
+      setExtractedData(null);
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleRetry = () => {
+    setFile(null);
+    setExtractedData(null);
   };
 
   return (
@@ -85,7 +104,14 @@ export default function UploadParse() {
           <UploadZone onFileSelect={handleFileSelect} />
 
           {file && !extractedData && (
-            <div className="mt-8 flex justify-end">
+            <div className="mt-8 flex justify-between items-center">
+              <Button
+                variant="outline"
+                onClick={handleRetry}
+                disabled={isProcessing}
+              >
+                Change File
+              </Button>
               <Button
                 onClick={handleParse}
                 disabled={isProcessing}
@@ -95,7 +121,7 @@ export default function UploadParse() {
                 {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Processing...
+                    Processing document...
                   </>
                 ) : (
                   <>
@@ -179,17 +205,24 @@ export default function UploadParse() {
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />
                 <span>
-                  {extractedData.requirements?.length || 0} requirements extracted • {extractedData.deadlines?.length || 0} deadlines identified
+                  {extractedData.requirements?.length || 0} requirements • {extractedData.deadlines?.length || 0} deadlines
                 </span>
               </div>
-              <Button 
-                size="lg"
-                onClick={() => navigate('/timeline')}
-                disabled={!extractedData.deadlines || extractedData.deadlines.length === 0}
-              >
-                Continue to Timeline
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+              <div className="flex space-x-3">
+                <Button 
+                  variant="outline"
+                  onClick={handleRetry}
+                >
+                  Upload Another
+                </Button>
+                <Button 
+                  size="lg"
+                  onClick={() => navigate('/timeline')}
+                >
+                  Continue to Timeline
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </Card>
         )}

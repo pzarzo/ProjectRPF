@@ -19,10 +19,19 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      console.error('Auth error:', userError);
+      return new Response(
+        JSON.stringify({ error: 'User not authenticated. Please log in.' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        }
+      );
     }
+
+    console.log('User authenticated:', user.id);
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -33,69 +42,80 @@ serve(async (req) => {
 
     console.log(`Processing file: ${file.name}, size: ${file.size}, type: ${file.type}`);
 
-    // Read file content
-    const fileContent = await file.text();
+    // Read file content (limit to 100KB for text extraction)
+    const fileBuffer = await file.arrayBuffer();
+    const fileContent = new TextDecoder().decode(fileBuffer).substring(0, 100000);
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
-    // Create prompt for AI extraction
-    const extractionPrompt = `Analyze this ${fileExtension?.toUpperCase()} document and extract RFP information in JSON format.
+    // Create comprehensive prompt for AI extraction
+    const extractionPrompt = `You are an expert RFP parser. Extract ALL information from this ${fileExtension?.toUpperCase()} document into structured JSON.
 
 Document content:
-${fileContent.substring(0, 50000)} // Limit to avoid token issues
+${fileContent}
 
-Extract the following fields (use null if not found, don't invent data):
+Extract into this exact JSON structure (use null for missing fields, NEVER invent data):
+
 {
-  "title": "RFP title",
-  "issuer": "Organization name",
-  "reference_id": "RFP reference number",
-  "procurement_method": "open/restricted/competitive_dialogue/etc",
-  "contract_type": "fixed_price/time_materials/cost_plus/etc",
-  "scope_summary": "Brief project description",
-  "budget_cap_amount": number or null,
-  "budget_cap_currency": "USD/EUR/etc",
-  "duration_months": number or null,
-  "language": "en/es/fr/etc",
-  "confidence": 0.0-1.0 (confidence score),
+  "title": "Full RFP title",
+  "issuer": "Organization/entity issuing the RFP",
+  "reference_id": "RFP reference/ID number",
+  "procurement_method": "open/restricted/competitive_dialogue/negotiated/framework",
+  "contract_type": "fixed_price/time_materials/cost_plus/performance_based",
+  "scope_summary": "Brief 2-3 sentence project description",
+  "budget_cap_amount": number_or_null,
+  "budget_cap_currency": "USD/EUR/GBP/etc",
+  "duration_months": number_or_null,
+  "language": "en/es/fr/de/etc",
+  "confidence": 0.85,
   "deadlines": [
     {
-      "type": "clarification_questions/info_session/site_visit/submission/etc",
-      "datetime_iso": "ISO 8601 datetime",
-      "timezone": "Europe/Madrid/etc"
+      "type": "clarification_deadline/info_session/site_visit/proposal_submission/contract_start",
+      "datetime_iso": "2025-10-15T17:00:00Z",
+      "timezone": "Europe/Madrid"
     }
   ],
   "requirements": [
     {
-      "text": "Requirement description",
+      "text": "Complete requirement text",
       "type": "mandatory/optional/gating",
-      "category": "eligibility/docs/budget/methodology/legal/submission",
+      "category": "eligibility/technical/financial/legal/documentation",
       "priority": "high/medium/low",
-      "source_page": page_number or null,
-      "source_section": "section name"
+      "source_page": page_number,
+      "source_section": "Section X.Y title"
+    }
+  ],
+  "required_documents": [
+    {
+      "name": "Document name",
+      "description": "Brief description",
+      "mandatory": true/false
     }
   ],
   "evaluation_criteria": [
     {
       "name": "Criterion name",
-      "weight": percentage or null,
-      "details": "Details",
-      "method": "weighted/pass_fail/L1/MEAT"
+      "weight": percentage_number,
+      "details": "How it will be evaluated",
+      "method": "weighted/pass_fail/scoring"
     }
   ],
   "citations": [
     {
-      "field": "field_name",
+      "field": "title/budget_cap/deadline/etc",
       "page": page_number,
-      "section": "section_name"
+      "section": "Section name where found"
     }
   ]
 }
 
-IMPORTANT: 
-- Only extract information explicitly stated in the document
-- Use null for missing values
-- Normalize dates to ISO 8601 format
-- Include citations showing where each piece of information was found
-- Return ONLY valid JSON, no additional text`;
+CRITICAL RULES:
+1. Extract ONLY information explicitly in the document
+2. For dates: convert to ISO 8601 format with timezone
+3. For amounts: extract numbers without formatting (e.g., 170000 not "170,000")
+4. Include page/section citations for ALL extracted fields
+5. If a field is not found, use null (not empty string)
+6. confidence should reflect extraction certainty (0.0-1.0)
+7. Return ONLY the JSON object, no markdown, no explanation`;
 
     // Call Lovable AI
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -112,12 +132,15 @@ IMPORTANT:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
-          { role: 'system', content: 'You are an expert at extracting structured information from RFP documents. Always return valid JSON only.' },
+          { 
+            role: 'system', 
+            content: 'You are an expert RFP document parser. Extract structured data with high accuracy. Return ONLY valid JSON, no markdown formatting, no explanations.' 
+          },
           { role: 'user', content: extractionPrompt }
         ],
-        temperature: 0.3,
+        temperature: 0.1,
       }),
     });
 

@@ -8,6 +8,8 @@ import Dashboard from "./pages/Dashboard";
 import UploadParse from "./pages/UploadParse";
 import Requirements from "./pages/Requirements";
 import Timeline from "./pages/Timeline";
+import Auth from "./pages/Auth";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,7 +21,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<AppLayout />}>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="upload" element={<UploadParse />} />
             <Route path="requirements" element={<Requirements />} />
