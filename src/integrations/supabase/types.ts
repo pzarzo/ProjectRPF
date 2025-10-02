@@ -429,6 +429,7 @@ export type Database = {
           id: string
           priority: string | null
           rfp_id: string
+          section_key: string | null
           source_page: number | null
           source_section: string | null
           text: string
@@ -440,6 +441,7 @@ export type Database = {
           id?: string
           priority?: string | null
           rfp_id: string
+          section_key?: string | null
           source_page?: number | null
           source_section?: string | null
           text: string
@@ -451,6 +453,7 @@ export type Database = {
           id?: string
           priority?: string | null
           rfp_id?: string
+          section_key?: string | null
           source_page?: number | null
           source_section?: string | null
           text?: string

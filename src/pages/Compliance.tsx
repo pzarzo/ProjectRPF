@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type ComplianceStatus = 'complies' | 'missing_info' | 'fail' | 'not_applicable';
 
@@ -34,25 +35,62 @@ interface ComplianceItem {
 
 export default function Compliance() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [rfps, setRfps] = useState<any[]>([]);
   const [selectedRfp, setSelectedRfp] = useState<string | null>(null);
-  const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [complianceItems, setComplianceItems] = useState<{ [key: string]: ComplianceItem }>({});
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
 
+  // Use React Query for requirements
+  const { data: requirements = [] } = useQuery({
+    queryKey: ['requirements', selectedRfp],
+    queryFn: async () => {
+      if (!selectedRfp) return [];
+      const { data, error } = await supabase
+        .from('rfp_requirements')
+        .select('*')
+        .eq('rfp_id', selectedRfp)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedRfp,
+  });
+
+  // Use React Query for compliance items
+  const { data: complianceData } = useQuery({
+    queryKey: ['compliance', selectedRfp],
+    queryFn: async () => {
+      if (!selectedRfp) return [];
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('compliance_items')
+        .select('*')
+        .eq('rfp_id', selectedRfp)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedRfp,
+  });
+
+  useEffect(() => {
+    if (complianceData) {
+      const itemsMap: { [key: string]: ComplianceItem } = {};
+      complianceData.forEach((item: any) => {
+        itemsMap[item.requirement_id] = item;
+      });
+      setComplianceItems(itemsMap);
+    }
+  }, [complianceData]);
+
   useEffect(() => {
     loadRfps();
   }, []);
-
-  useEffect(() => {
-    if (selectedRfp) {
-      loadRequirements();
-      loadComplianceItems();
-    }
-  }, [selectedRfp]);
 
   const loadRfps = async () => {
     try {
@@ -74,48 +112,6 @@ export default function Compliance() {
       console.error('Error loading RFPs:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadRequirements = async () => {
-    if (!selectedRfp) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('rfp_requirements')
-        .select('*')
-        .eq('rfp_id', selectedRfp)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setRequirements(data || []);
-    } catch (error) {
-      console.error('Error loading requirements:', error);
-    }
-  };
-
-  const loadComplianceItems = async () => {
-    if (!selectedRfp) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('compliance_items')
-        .select('*')
-        .eq('rfp_id', selectedRfp)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      const itemsMap: { [key: string]: ComplianceItem } = {};
-      data?.forEach((item: any) => {
-        itemsMap[item.requirement_id] = item;
-      });
-      setComplianceItems(itemsMap);
-    } catch (error) {
-      console.error('Error loading compliance items:', error);
     }
   };
 
@@ -144,6 +140,9 @@ export default function Compliance() {
         [requirementId]: updatedItem
       });
 
+      // Invalidate compliance query after manual update
+      queryClient.invalidateQueries({ queryKey: ['compliance', selectedRfp] });
+
       toast({
         title: "Success",
         description: "Compliance item updated"
@@ -164,7 +163,8 @@ export default function Compliance() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { data, error } = await supabase.functions.invoke('check-compliance', {
+      // Call the new automatic compliance checker
+      const { data, error } = await supabase.functions.invoke('check-compliance-auto', {
         body: { rfp_id: selectedRfp }
       });
 
@@ -175,7 +175,9 @@ export default function Compliance() {
         description: data.message || "Check completed successfully"
       });
 
-      await loadComplianceItems();
+      // Invalidate and refetch compliance data
+      await queryClient.invalidateQueries({ queryKey: ['compliance', selectedRfp] });
+      await queryClient.invalidateQueries({ queryKey: ['requirements', selectedRfp] });
     } catch (error: any) {
       console.error('Error running compliance check:', error);
       toast({

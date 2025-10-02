@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, FileText, Save, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SECTIONS = [
   { key: "executive_summary", name: "Executive Summary" },
@@ -20,6 +21,7 @@ const SECTIONS = [
 
 export default function Draft() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [rfps, setRfps] = useState<any[]>([]);
   const [selectedRfp, setSelectedRfp] = useState<string | null>(null);
   const [sections, setSections] = useState<any>({});
@@ -152,9 +154,26 @@ export default function Draft() {
       if (error) throw error;
 
       setEditingSection(null);
+      
+      // Trigger automatic compliance check
+      if (selectedRfp) {
+        const { data: session } = await supabase.auth.getSession();
+        if (session.session) {
+          supabase.functions.invoke('check-compliance-auto', {
+            body: { rfp_id: selectedRfp }
+          }).then(() => {
+            // Invalidate compliance and requirements queries
+            queryClient.invalidateQueries({ queryKey: ['compliance'] });
+            queryClient.invalidateQueries({ queryKey: ['requirements'] });
+          }).catch(err => {
+            console.error('Compliance check failed:', err);
+          });
+        }
+      }
+
       toast({
         title: "Success",
-        description: "Draft saved successfully"
+        description: "Draft saved and compliance updated"
       });
     } catch (error: any) {
       console.error('Error saving draft:', error);
