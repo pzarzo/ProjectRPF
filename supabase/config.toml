@@ -11,3 +11,9 @@ verify_jwt = true
 
 [functions.check-compliance]
 verify_jwt = true
+
+[functions.validate-submission]
+verify_jwt = true
+
+[functions.export-submission]
+verify_jwt = true
