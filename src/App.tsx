@@ -9,6 +9,7 @@ import UploadParse from "./pages/UploadParse";
 import Requirements from "./pages/Requirements";
 import Timeline from "./pages/Timeline";
 import Draft from "./pages/Draft";
+import Compliance from "./pages/Compliance";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -29,7 +30,7 @@ const App = () => (
             <Route path="requirements" element={<Requirements />} />
             <Route path="timeline" element={<Timeline />} />
             <Route path="draft" element={<Draft />} />
-            <Route path="compliance" element={<Dashboard />} />
+            <Route path="compliance" element={<Compliance />} />
             <Route path="submission" element={<Dashboard />} />
             <Route path="knowledge" element={<Dashboard />} />
             <Route path="settings" element={<Dashboard />} />

@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.draft-section]
 verify_jwt = true
+
+[functions.check-compliance]
+verify_jwt = true

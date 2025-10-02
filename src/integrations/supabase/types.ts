@@ -87,6 +87,63 @@ export type Database = {
           },
         ]
       }
+      compliance_items: {
+        Row: {
+          action_item: string | null
+          created_at: string
+          due_date: string | null
+          evidence: string | null
+          id: string
+          owner: string | null
+          requirement_id: string
+          rfp_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_item?: string | null
+          created_at?: string
+          due_date?: string | null
+          evidence?: string | null
+          id?: string
+          owner?: string | null
+          requirement_id: string
+          rfp_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_item?: string | null
+          created_at?: string
+          due_date?: string | null
+          evidence?: string | null
+          id?: string
+          owner?: string | null
+          requirement_id?: string
+          rfp_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_items_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "rfp_requirements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_items_rfp_id_fkey"
+            columns: ["rfp_id"]
+            isOneToOne: false
+            referencedRelation: "rfps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       draft_sections: {
         Row: {
           content: string | null
