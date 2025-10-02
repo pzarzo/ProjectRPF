@@ -2,42 +2,63 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import RfpCard from "@/components/rfp/RfpCard";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-// Mock data - will be replaced with real data
-const mockRfps = [
-  {
-    id: "1",
-    title: "IT Infrastructure Modernization Project",
-    issuer: "Ministry of Digital Affairs",
-    referenceId: "RFP-2025-IT-001",
-    deadline: "2025-11-15",
-    status: "in-progress" as const,
-    requirementsCount: 45,
-    complianceScore: 72,
-  },
-  {
-    id: "2",
-    title: "Healthcare Management System Implementation",
-    issuer: "National Health Service",
-    referenceId: "RFP-2025-HS-008",
-    deadline: "2025-10-30",
-    status: "review" as const,
-    requirementsCount: 38,
-    complianceScore: 85,
-  },
-  {
-    id: "3",
-    title: "Smart City Infrastructure Development",
-    issuer: "City Council of Madrid",
-    referenceId: "RFP-2025-SC-023",
-    deadline: "2025-12-01",
-    status: "draft" as const,
-    requirementsCount: 52,
-  },
-];
+interface Rfp {
+  id: string;
+  title: string;
+  issuer: string | null;
+  reference_id: string | null;
+  created_at: string;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [rfps, setRfps] = useState<Rfp[]>([]);
+  const [requirements, setRequirements] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadRfps();
+  }, []);
+
+  const loadRfps = async () => {
+    try {
+      const { data: rfpsData, error: rfpsError } = await supabase
+        .from('rfps')
+        .select('id, title, issuer, reference_id, created_at')
+        .order('created_at', { ascending: false });
+
+      if (rfpsError) throw rfpsError;
+
+      setRfps(rfpsData || []);
+
+      // Load requirements count for each RFP
+      if (rfpsData && rfpsData.length > 0) {
+        const reqCounts: Record<string, number> = {};
+        
+        for (const rfp of rfpsData) {
+          const { count, error } = await supabase
+            .from('rfp_requirements')
+            .select('*', { count: 'exact', head: true })
+            .eq('rfp_id', rfp.id);
+          
+          if (!error && count !== null) {
+            reqCounts[rfp.id] = count;
+          }
+        }
+        
+        setRequirements(reqCounts);
+      }
+    } catch (error) {
+      console.error('Error loading RFPs:', error);
+      toast.error("Failed to load RFPs");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
@@ -66,19 +87,29 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="text-sm text-muted-foreground mb-2">Total RFPs</div>
-            <div className="text-3xl font-bold text-foreground">12</div>
+            <div className="text-3xl font-bold text-foreground">{rfps.length}</div>
           </div>
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm text-muted-foreground mb-2">In Progress</div>
-            <div className="text-3xl font-bold text-primary">5</div>
+            <div className="text-sm text-muted-foreground mb-2">This Month</div>
+            <div className="text-3xl font-bold text-primary">
+              {rfps.filter(r => {
+                const date = new Date(r.created_at);
+                const now = new Date();
+                return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+              }).length}
+            </div>
           </div>
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm text-muted-foreground mb-2">Compliant</div>
-            <div className="text-3xl font-bold text-success">4</div>
+            <div className="text-sm text-muted-foreground mb-2">Requirements</div>
+            <div className="text-3xl font-bold text-success">
+              {Object.values(requirements).reduce((sum, count) => sum + count, 0)}
+            </div>
           </div>
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm text-muted-foreground mb-2">Submitted</div>
-            <div className="text-3xl font-bold text-secondary">3</div>
+            <div className="text-sm text-muted-foreground mb-2">Avg per RFP</div>
+            <div className="text-3xl font-bold text-secondary">
+              {rfps.length > 0 ? Math.round(Object.values(requirements).reduce((sum, count) => sum + count, 0) / rfps.length) : 0}
+            </div>
           </div>
         </div>
 
@@ -87,11 +118,33 @@ export default function Dashboard() {
           <h2 className="text-2xl font-semibold text-foreground mb-6">
             Active RFPs
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockRfps.map((rfp) => (
-              <RfpCard key={rfp.id} {...rfp} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="text-center text-muted-foreground py-12">
+              Loading RFPs...
+            </div>
+          ) : rfps.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground text-lg mb-4">No active RFPs</p>
+              <Button onClick={() => navigate("/upload")}>
+                <Plus className="mr-2 h-5 w-5" />
+                Upload RFP to get started
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {rfps.map((rfp) => (
+                <RfpCard 
+                  key={rfp.id} 
+                  title={rfp.title}
+                  issuer={rfp.issuer || "Unknown"}
+                  referenceId={rfp.reference_id || "N/A"}
+                  deadline={new Date(rfp.created_at).toLocaleDateString()}
+                  status="draft"
+                  requirementsCount={requirements[rfp.id] || 0}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import UploadParse from "./pages/UploadParse";
 import Requirements from "./pages/Requirements";
+import Timeline from "./pages/Timeline";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,7 +23,7 @@ const App = () => (
             <Route index element={<Dashboard />} />
             <Route path="upload" element={<UploadParse />} />
             <Route path="requirements" element={<Requirements />} />
-            <Route path="timeline" element={<Dashboard />} />
+            <Route path="timeline" element={<Timeline />} />
             <Route path="draft" element={<Dashboard />} />
             <Route path="compliance" element={<Dashboard />} />
             <Route path="submission" element={<Dashboard />} />
