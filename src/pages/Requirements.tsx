@@ -58,11 +58,22 @@ export default function Requirements() {
     gating: "destructive"
   } as const;
 
-  const priorityColors = {
-    high: "destructive",
-    medium: "default",
-    low: "secondary"
-  } as const;
+  const getPriorityStyle = (priority: string | null) => {
+    const normalizedPriority = priority?.toLowerCase();
+    
+    switch (normalizedPriority) {
+      case 'critical':
+        return 'bg-purple-600 text-white border-2 border-purple-700 font-bold shadow-md';
+      case 'high':
+        return 'bg-red-500 text-white border border-red-600';
+      case 'medium':
+        return 'bg-blue-500 text-white border border-blue-600';
+      case 'low':
+        return 'bg-gray-400 text-gray-900 border border-gray-500';
+      default:
+        return 'bg-gray-200 text-gray-700 border border-gray-300';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
@@ -134,11 +145,11 @@ export default function Requirements() {
                         <Badge variant="outline">{req.category || 'N/A'}</Badge>
                       </td>
                       <td className="py-4 px-4">
-                        <Badge 
-                          variant={req.priority && req.priority in priorityColors ? priorityColors[req.priority as keyof typeof priorityColors] : "secondary"}
+                        <span 
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${getPriorityStyle(req.priority)}`}
                         >
                           {req.priority || 'N/A'}
-                        </Badge>
+                        </span>
                       </td>
                       <td className="py-4 px-4 text-xs text-muted-foreground">
                         {req.source_page ? `Page ${req.source_page}` : ''}
