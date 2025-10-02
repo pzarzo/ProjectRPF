@@ -48,6 +48,8 @@ export default function UploadParse() {
     setIsProcessing(true);
     
     try {
+      console.log('Starting RFP extraction...');
+      
       const formData = new FormData();
       formData.append('file', file);
 
@@ -56,9 +58,18 @@ export default function UploadParse() {
         throw new Error("Please log in to upload RFPs");
       }
 
-      const { data, error } = await supabase.functions.invoke('extract-rfp', {
+      console.log('Calling extract-rfp function...');
+      
+      // Set a timeout for the function call
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout - please try a smaller file')), 60000)
+      );
+
+      const functionPromise = supabase.functions.invoke('extract-rfp', {
         body: formData,
       });
+
+      const { data, error } = await Promise.race([functionPromise, timeoutPromise]) as any;
 
       if (error) {
         console.error('Function error:', error);
@@ -66,14 +77,27 @@ export default function UploadParse() {
       }
 
       if (data?.error) {
+        console.error('Server error:', data.error);
         throw new Error(data.error);
       }
 
+      console.log('Extraction successful:', data);
       setExtractedData(data.extracted);
       toast.success("RFP parsed successfully! Data saved to database.");
     } catch (error) {
       console.error('Error parsing RFP:', error);
-      const errorMessage = error instanceof Error ? error.message : "Parsing failed, please try again";
+      let errorMessage = "Parsing failed, please try again";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          errorMessage = "Request timeout - the file may be too large. Try a smaller file or a different format.";
+        } else if (error.message.includes('not authenticated')) {
+          errorMessage = "Please log in again to upload RFPs";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast.error(errorMessage);
       setExtractedData(null);
     } finally {
